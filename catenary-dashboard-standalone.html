@@ -26,8 +26,8 @@
     --est:#9BD4DD;               /* estimated (muted) */
     --danger:#C2362E;
     /* region categorical (muted, distinguishable) */
-    --r-europe:#1AA7BE; --r-china:#C8203F; --r-asia:#8FB93C;
-    --r-americas:#0A2233; --r-other:#7C8A93; --r-unknown:#C3D0D6;
+    --r-europe:#1AA7BE; --r-china:#F2545B; --r-asia:#E0A24E;
+    --r-americas:#0A2233; --r-other:#5A6B76; --r-unknown:#B9C6CD;
     /* ---- type ---- */
     --serif:"Jost",ui-sans-serif,system-ui,sans-serif;
     --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
@@ -109,6 +109,12 @@
   .chart.tall{height:460px;}
   .chart.short{height:240px;}
   .row2{display:grid;grid-template-columns:1.3fr 1fr;gap:var(--gap);}
+  .extra-2col{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);}
+  /* bottom-align the two charts so their X-axes line up despite the differing header heights */
+  .extra-2col .card{display:flex;flex-direction:column;}
+  .extra-2col .chart{margin-top:auto;}
+  .oo-3col{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap);}
+  .oo-3col .chart{height:340px;}
   /* G1 (Size & Age): bottom-align the two charts so their X-axes line up despite differing headers */
   #panel-g1 .card{display:flex;flex-direction:column;}
   #panel-g1 .chart{margin-top:auto;}
@@ -152,11 +158,12 @@
     color:var(--muted);font-size:11.5px;line-height:1.6;}
   footer b{color:var(--ink-2);}
 
-  @media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.row2{grid-template-columns:1fr;}}
+  @media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.row2{grid-template-columns:1fr;}.extra-2col,.oo-3col{grid-template-columns:1fr;}}
   /* 모바일(터치 디바이스: iOS·Android 폰/태블릿) — 모든 차트 1열 배치 원칙. 데스크톱(마우스) 레이아웃은 불변.
      !important 로 G1 패널의 인라인 2열(grid-template-columns:1fr 1fr) 까지 강제 1열화. */
   @media (hover:none) and (pointer:coarse){
     .row2{grid-template-columns:1fr !important;}
+    .extra-2col,.oo-3col{grid-template-columns:1fr !important;}
     .kpi-grid{grid-template-columns:repeat(2,1fr);}
   }
 </style>
@@ -255,13 +262,18 @@
   <div class="panel" id="panel-g3">
     <div class="card">
       <h3>Vessel distribution (scatter)</h3>
-      <div class="desc">Each vessel plotted on two selectable axes. Colour = owner region · point size = carrying capacity · solid = sourced, faded = estimated.</div>
+      <div class="desc">Each vessel plotted on two selectable axes. Colour & shape = owner region · point size = carrying capacity.</div>
       <div class="controls">
         <span class="axis-sel">X
-          <select id="g3x"><option value="age" selected>Age</option><option value="dwt">DWT</option><option value="gt">GT</option><option value="cap">Carrying capacity</option></select>
+          <select id="g3x"><option value="by" selected>Built year</option><option value="age">Age</option><option value="dwt">DWT</option><option value="gt">GT</option><option value="cap">Carrying capacity</option></select>
         </span>
         <span class="axis-sel">Y
-          <select id="g3y"><option value="age">Age</option><option value="dwt">DWT</option><option value="gt">GT</option><option value="cap" selected>Carrying capacity</option></select>
+          <select id="g3y"><option value="by">Built year</option><option value="age">Age</option><option value="dwt">DWT</option><option value="gt">GT</option><option value="cap" selected>Carrying capacity</option></select>
+        </span>
+        <label class="toggle"><input type="checkbox" id="g3fade"> Fade estimated capacity</label>
+        <span class="ctl-lab">Highlight</span>
+        <span class="seg" id="seg-g3hi">
+          <button data-g="Prysmian">Prysmian</button><button data-g="Nexans">Nexans</button><button data-g="NKT Cables">NKT</button><button data-g="LS Cable &amp; System">LS</button><button data-g="Taihan Cable &amp; Solution">Taihan</button>
         </span>
         <span id="g3-disable" class="warn" style="font-size:12px"></span>
       </div>
@@ -273,6 +285,7 @@
 
   <!-- ---- EXTRA: 2.1 / 2.2 / 2.3 ---- -->
   <div class="panel" id="panel-extra">
+    <div class="extra-2col">
     <div class="card">
       <h3>Aging cohorts vs On Order inflow</h3>
       <div class="desc" id="aging-desc">Does newbuild capacity replace the aging fleet? In Service + On Order stacked (legend toggle); switch carrying capacity / vessel count. Damaged excluded.</div>
@@ -292,15 +305,16 @@
       <div id="ts" class="chart"></div>
       <div id="ts-cap" class="caption"></div>
     </div>
+    </div>
 
     <div class="card">
       <h3 id="oo-ttl">On Order ownership concentration</h3>
       <div class="desc">Order backlog by group company, owner region, and delivery year.</div>
-      <div class="row2">
+      <div class="oo-3col">
         <div id="oo-group" class="chart"></div>
         <div id="oo-region" class="chart"></div>
+        <div id="oo-year" class="chart"></div>
       </div>
-      <div id="oo-year" class="chart short"></div>
       <div id="oo-cap" class="caption"></div>
     </div>
   </div>
@@ -326,6 +340,7 @@
 <footer>
   <div><b>Source:</b> <span id="ft-src"></span> · <b>As of:</b> <span id="ft-asof"></span> · <b>Schema:</b> <span id="ft-schema"></span></div>
   <div>Cable Layer 126 + Fiber Optic Layer 80 vessels (Flex Layer excluded). Carrying-capacity figures are estimated where sourced data is unavailable; estimated values are indicative and should not be cited as exact. Damaged/Not in Service (1 vessel) excluded from status charts.</div>
+  <div style="text-align:right;margin-top:8px"><b>© MERITZ Securities Research Center</b></div>
 </footer>
 
 <script>/* ECharts 5.5.1 — inlined for standalone sharing */
@@ -13481,7 +13496,7 @@ const charts={};
 const state={
   tab:'Cable Layer', tabKey:'cable', sub:'g1',
   g1m:'capacity', g2d:'group_company', g2m:'count',
-  g3x:'age', g3y:'cap', agm:'capacity',
+  g3x:'by', g3y:'cap', g3fade:false, g3hi:new Set(), agm:'capacity',
   fleetSort:{key:'group_company', dir:1}, fleetFilter:''
 };
 // Fleet list columns (display only; no aggregation). type drives alignment + sort.
@@ -13506,11 +13521,22 @@ const C={accent:'#0A2233',accent2:'#6C8AB8',pos:'#1AA7BE',est:'#9BD4DD',
   vi:'#0E6E7A'};   /* vertically-integrated cable maker highlight */
 const VI_NOTE='Prysmian · Nexans · ZTT · Hengtong · NKT · LS · Taihan';
 // region categorical palette — distinct hues, primary channel for the scatter
-const REGION_COLOR={'Europe':'#1AA7BE','China':'#C8203F','Asia(excl.China)':'#8FB93C',
-  'Americas':'#0A2233','Other':'#7C8A93','Unknown':'#C3D0D6'};
+const REGION_COLOR={'Europe':'#1AA7BE','China':'#F2545B','Asia(excl.China)':'#E0A24E',
+  'Americas':'#0A2233','Other':'#5A6B76','Unknown':'#B9C6CD'};
+// per-region marker shape for the scatter (legend mirrors these)
+// China = high-curvature convex (cushion) diamond via SVG path; Asia = convex rounded square
+const CHINA_DIAMOND='path://M50,0 Q88,12 100,50 Q88,88 50,100 Q12,88 0,50 Q12,12 50,0 Z';
+const REGION_SYMBOL={'Europe':'circle','China':CHINA_DIAMOND,'Asia(excl.China)':'roundRect',
+  'Americas':'circle','Other':'circle','Unknown':'circle'};
 const REGION_LABEL={'Europe':'Europe','China':'China','Asia(excl.China)':'Asia (excl. China)',
   'Americas':'Americas','Other':'Other','Unknown':'Unknown'};
-const AXIS_NAME={age:'Age (years)',dwt:'DWT (t)',gt:'GT',cap:'Carrying capacity (t)'};
+const AXIS_NAME={age:'Age (years)',dwt:'DWT (t)',gt:'GT',cap:'Carrying capacity (t)',by:'Built year'};
+// integrated cable makers — canonical group_company labels (build_data.py canon_group).
+// each maker gets a distinct highlight hue (border + glow); short label for the legend.
+const HIGHLIGHT_COLORS={'Prysmian':'#E07A3F','Nexans':'#8E6FD0','NKT Cables':'#1FA8A0',
+  'LS Cable & System':'#D95DA0','Taihan Cable & Solution':'#3E78C9'};
+const HIGHLIGHT_SHORT={'Prysmian':'Prysmian','Nexans':'Nexans','NKT Cables':'NKT',
+  'LS Cable & System':'LS','Taihan Cable & Solution':'Taihan'};
 let SIZE_LABELS=[], AGE_LABELS=[];
 const STATUS_BASE=new Set(['In Service','Laid Up','Repairs']);
 const DAMAGED='Damaged/Not in Service';
@@ -13846,17 +13872,28 @@ function renderG2(){
   document.getElementById('g2-cap').innerHTML=capLine(agg.caption);
 }
 
+// scatter axis builder. Built year renders as a plain 4-digit year (no thousands separator)
+// on a fixed 5-year grid; other metrics keep ECharts' default numeric labels.
+function mkG3Axis(t,isX){
+  const a={name:AXIS_NAME[t],type:'value',scale:true,
+    splitLine:{lineStyle:{color:C.line}},axisLabel:{color:C.muted},nameTextStyle:{color:C.muted}};
+  if(isX){ a.nameLocation='middle'; a.nameGap=30; }
+  if(t==='by'){ a.interval=5; a.axisLabel.formatter=v=>String(Math.round(v)); }
+  return a;
+}
 function renderG3(){
   updateG3Disable();
   const x=state.g3x, y=state.g3y;
-  const AX={age:'age',dwt:'dwt',gt:'gt',cap:'cap'};
+  const AX={age:'age',dwt:'dwt',gt:'gt',cap:'cap',by:'built_year'};
   const disabled=(new Set([x,y]).size===2)&&((x==='dwt'&&y==='gt')||(x==='gt'&&y==='dwt'));
   document.getElementById('g3-disable').textContent=disabled?'DWT–GT combination disabled (r=0.898). Choose another pair.':'';
   const pts=D.group3[state.tabKey].points;
   const caps=pts.map(p=>p.cap).filter(c=>c!=null && c>0);
   const maxCap=caps.length?Math.max(...caps):1;
   const sizeFor=c=>(c==null||c<=0)?6:7+26*Math.sqrt(c)/Math.sqrt(maxCap);
-  // one series per region → coloured legend; opacity encodes sourced vs estimated
+  // one series per region → coloured + shaped legend. Default: sourced/estimated identical.
+  // "Fade estimated" fades estimated points; "Highlight" gives each integrated cable maker a
+  // distinct border + glow (others are left untouched, not dimmed).
   const byRegion={}; REGIONS.forEach(r=>byRegion[r]=[]);
   if(!disabled){
     pts.forEach(p=>{
@@ -13864,13 +13901,17 @@ function renderG3(){
       if(xv==null||yv==null) return;
       const sourced=p.fill_flag==='sourced';
       const col=REGION_COLOR[p.region]||C.grey;
-      (byRegion[p.region]||byRegion.Unknown).push({value:[xv,yv],symbolSize:sizeFor(p.cap),
-        itemStyle:{color:col,opacity:sourced?0.9:0.4,
-          borderColor:col,borderWidth:sourced?0:1.1},_r:p});
+      const op=(state.g3fade && !sourced)?0.18:0.85;
+      let bColor='transparent', bWidth=0, sz=sizeFor(p.cap), shB=0, shC='transparent';
+      const hc=state.g3hi.has(p.group_company)?HIGHLIGHT_COLORS[p.group_company]:null;
+      if(hc){ bColor=hc; bWidth=2; sz+=2; shB=16; shC=hc; }
+      (byRegion[p.region]||byRegion.Unknown).push({value:[xv,yv],symbolSize:sz,
+        itemStyle:{color:col,opacity:op,borderColor:bColor,borderWidth:bWidth,
+          shadowBlur:shB,shadowColor:shC},_r:p});
     });
   }
   const series=REGIONS.filter(r=>byRegion[r].length).map(r=>({
-    name:REGION_LABEL[r],type:'scatter',symbol:'circle',data:byRegion[r],
+    name:REGION_LABEL[r],type:'scatter',symbol:REGION_SYMBOL[r]||'circle',data:byRegion[r],
     itemStyle:{color:REGION_COLOR[r]},
     markLine:(r===REGIONS.find(rr=>byRegion[rr].length)&&(x==='age'||y==='age'))?{
       silent:true,symbol:'none',lineStyle:{color:C.line,type:'dashed'},
@@ -13878,7 +13919,7 @@ function renderG3(){
   }));
   ec('g3').setOption({
     textStyle:ECTEXT,
-    legend:{top:2,type:'scroll',icon:'circle',itemWidth:10,itemHeight:10,textStyle:{color:C.muted,fontSize:11}},
+    legend:{top:2,type:'scroll',itemWidth:12,itemHeight:10,textStyle:{color:C.muted,fontSize:11}},
     tooltip:{trigger:'item',formatter:pp=>{const r=pp.data._r;
       return `<b>${r.vessel_name||'—'}</b> (${r.built_year||'?'})<br>`+
              `Group: <b>${r.group_company||'—'}</b><br>`+
@@ -13887,18 +13928,24 @@ function renderG3(){
              `GT: ${r.gt==null?'n/a':fmtInt(r.gt)}<br>`+
              `DWT: ${r.dwt==null?'n/a':fmtInt(r.dwt)}`;}},
     grid:{left:8,right:18,top:38,bottom:46,containLabel:true},
-    xAxis:{name:AXIS_NAME[x],nameLocation:'middle',nameGap:30,type:'value',scale:true,
-      splitLine:{lineStyle:{color:C.line}},axisLabel:{color:C.muted},nameTextStyle:{color:C.muted}},
-    yAxis:{name:AXIS_NAME[y],type:'value',scale:true,
-      splitLine:{lineStyle:{color:C.line}},axisLabel:{color:C.muted},nameTextStyle:{color:C.muted}},
+    xAxis:mkG3Axis(x,true),
+    yAxis:mkG3Axis(y,false),
     series},true);
   document.getElementById('g3-legend').innerHTML=
     `<span>Point size = carrying capacity</span>`+
-    `<span style="margin-left:8px">Solid = sourced · faded = estimated</span>`;
-  const cba=D.group3[state.tabKey].caption_by_axes[`${x}|${y}`];
+    `<span style="margin-left:8px">Colour & shape = owner region</span>`+
+    (state.g3fade?`<span style="margin-left:8px">Faded = estimated capacity</span>`:``)+
+    (state.g3hi.size?`<span style="margin-left:8px">Glow =</span>`+
+      [...state.g3hi].map(g=>
+        `<span style="margin-left:6px"><i style="background:${HIGHLIGHT_COLORS[g]}"></i>${HIGHLIGHT_SHORT[g]}</span>`).join(''):``);
+  // built_year & age share an identical non-null set → reuse the precomputed 'age' caption (no JS aggregation).
+  const ck=t=>t==='by'?'age':t;
+  const cba=D.group3[state.tabKey].caption_by_axes[`${ck(x)}|${ck(y)}`];
   document.getElementById('g3-cap').innerHTML=
-    (disabled?`<b>Combination disabled.</b>`:capLine(cba))+
-    `\nColour = owner region; faded points use estimated carrying capacity (not for citation).`;
+    (disabled?`<b>Combination disabled.</b>`
+      :(cba?capLine(cba):`<b>Built year vs Age</b> — equivalent axes`))+
+    `\nColour & shape = owner region`+
+    (state.g3fade?`; faded points use estimated carrying capacity (not for citation).`:`.`);
 }
 
 function renderAging(){
@@ -14116,6 +14163,16 @@ function bind(){
   const g3upd=()=>{updateG3Disable();renderG3();};
   document.getElementById('g3x').onchange=e=>{state.g3x=e.target.value;g3upd();};
   document.getElementById('g3y').onchange=e=>{state.g3y=e.target.value;g3upd();};
+  document.getElementById('g3fade').onchange=e=>{state.g3fade=e.target.checked;renderG3();};
+  // per-company highlight toggles (independent multi-select); active button wears its glow hue
+  document.querySelectorAll('#seg-g3hi button').forEach(b=>{
+    b.onclick=()=>{
+      const g=b.dataset.g;
+      if(state.g3hi.has(g)){ state.g3hi.delete(g); b.classList.remove('on'); b.style.background=''; b.style.color=''; }
+      else{ state.g3hi.add(g); b.classList.add('on'); b.style.background=HIGHLIGHT_COLORS[g]; b.style.color='#fff'; }
+      renderG3();
+    };
+  });
   // fleet list filter
   document.getElementById('fleet-filter').oninput=e=>{state.fleetFilter=e.target.value;renderFleet();};
 }
